@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # Executive AI Voice Agent Application Service
+  voice-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aria-voice-agent
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=ARIA Executive AI Voice Agent
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - DATABASE_URL=postgresql+asyncpg://agent_user:agent_password@postgres:5432/voice_agent_db
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - DEFAULT_VOICE=en-US-AriaNeural
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - agent-network
+
+  # PostgreSQL with pgvector for Enterprise Persistence & Vector RAG
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: aria-postgres-db
+    environment:
+      - POSTGRES_USER=agent_user
+      - POSTGRES_PASSWORD=agent_password
+      - POSTGRES_DB=voice_agent_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent_user -d voice_agent_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - agent-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  agent-network:
+    driver: bridge
