@@ -15,7 +15,9 @@ from app.services.agent_tools import (
     execute_tool
 )
 from app.services.tts_service import tts_service
+from app.services.gemini_agent import agent
 from pydantic import BaseModel, Field
+from typing import Dict, Any, Optional
 from typing import Dict, Any
 
 # Configure logging
@@ -155,6 +157,37 @@ async def synthesize_speech(
             "Cache-Control": "no-cache"
         }
     )
+
+
+class AgentChatRequest(BaseModel):
+    message: str = Field(..., description="User voice or text prompt for the executive assistant")
+    session_id: Optional[str] = Field(None, description="Optional persistent conversation session ID")
+
+
+@app.get("/api/agent/status", tags=["Agent Brain"])
+async def agent_status():
+    """Check agent brain configuration, live Gemini status, and active model."""
+    return JSONResponse(
+        content={
+            "agent_name": "Aria",
+            "model": agent.model_name,
+            "mode": "live" if agent.is_live else "simulation",
+            "has_api_key": bool(agent.api_key),
+            "tools_count": len(AVAILABLE_TOOLS),
+            "note": "Live Google Gemini mode active" if agent.is_live else "Running in simulation fallback mode. Add GEMINI_API_KEY to .env to enable live LLM."
+        }
+    )
+
+
+@app.post("/api/agent/chat", tags=["Agent Brain"])
+async def agent_chat(request: AgentChatRequest):
+    """Send a user message to the Executive Agent; triggers tool calls and returns spoken reply."""
+    result = await agent.process_user_message(
+        user_message=request.message,
+        session_id=request.session_id
+    )
+    return JSONResponse(content=result)
+
 
 
 
