@@ -9,6 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.session import init_db, get_db, engine
 from app.db import repository
+from app.services.agent_tools import (
+    AVAILABLE_TOOLS,
+    GEMINI_FUNCTION_DECLARATIONS,
+    execute_tool
+)
+from pydantic import BaseModel, Field
+from typing import Dict, Any
 
 # Configure logging
 logging.basicConfig(
@@ -91,41 +98,27 @@ async def database_status(db: AsyncSession = Depends(get_db)):
     )
 
 
-@app.post("/api/db/seed-sample", tags=["Database"])
-async def seed_sample_data(db: AsyncSession = Depends(get_db)):
-    """Seed sample executive data (tasks, calendar event, memory) for manual browser verification."""
-    task = await repository.create_task(
-        db,
-        title="Review Q4 Executive Budget Strategy",
-        description="Analyze cloud infrastructure costs and AI token burn rate.",
-        priority="high",
-        due_date="Tomorrow at 5:00 PM"
-    )
-    event = await repository.create_calendar_event(
-        db,
-        title="Board of Directors Quarterly Sync",
-        start_time="Tomorrow 10:00 AM",
-        end_time="Tomorrow 11:30 AM",
-        location="Executive Boardroom / Zoom",
-        attendees="CEO, CTO, Head of Product"
-    )
-    memory = await repository.save_memory(
-        db,
-        key="meeting_preference",
-        content="Prefer mornings before 12 PM for strategic architecture reviews.",
-        category="preference",
-        importance="high"
-    )
-    stats = await repository.get_db_stats(db)
+class ToolExecutionRequest(BaseModel):
+    tool_name: str = Field(..., description="Name of the tool to execute")
+    args: Dict[str, Any] = Field(default_factory=dict, description="Arguments dictionary for the tool")
+
+
+@app.get("/api/tools", tags=["Tools"])
+async def list_tools():
+    """List all registered agent tools and their Gemini function calling schemas."""
     return JSONResponse(
         content={
-            "message": "Sample executive records created successfully!",
-            "created_items": {
-                "task": task.to_dict(),
-                "event": event.to_dict(),
-                "memory": memory.to_dict()
-            },
-            "stats": stats
+            "count": len(GEMINI_FUNCTION_DECLARATIONS),
+            "tool_names": list(AVAILABLE_TOOLS.keys()),
+            "declarations": GEMINI_FUNCTION_DECLARATIONS
         }
     )
+
+
+@app.post("/api/tools/execute", tags=["Tools"])
+async def run_tool(request: ToolExecutionRequest):
+    """Execute an agent tool with arguments and return the result."""
+    result = await execute_tool(request.tool_name, request.args)
+    return JSONResponse(content=result)
+
 
