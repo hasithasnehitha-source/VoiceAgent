@@ -16,6 +16,8 @@ from app.services.agent_tools import (
 )
 from app.services.tts_service import tts_service
 from app.services.gemini_agent import agent
+from app.api.rest_router import router as rest_router
+from app.api.websocket_router import router as ws_router
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 from typing import Dict, Any
@@ -53,6 +55,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register API & WebSocket Routers
+app.include_router(rest_router)
+app.include_router(ws_router)
+
 
 
 @app.get("/", tags=["Root"])
