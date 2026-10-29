@@ -7,6 +7,7 @@ from sqlalchemy import select, desc
 from app.db.session import get_db
 from app.db import repository
 from app.db.models import ConversationLog
+from app.services.rag_service import rag_service
 
 router = APIRouter(prefix="/api", tags=["Executive Dashboard REST"])
 
@@ -39,6 +40,19 @@ class CreateMemoryDTO(BaseModel):
     content: str = Field(..., min_length=1)
     category: str = Field(default="general", pattern="^(preference|contact|fact|reminder|general)$")
     importance: str = Field(default="normal", pattern="^(low|normal|high)$")
+
+
+class IngestDocumentDTO(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+    content: str = Field(..., min_length=10)
+    filename: Optional[str] = None
+    category: str = Field(default="policy")
+
+
+class SemanticSearchDTO(BaseModel):
+    query: str = Field(..., min_length=1)
+    top_k: int = Field(default=3, ge=1, le=10)
+
 
 
 # ---------------------------------------------------------------------------
@@ -175,3 +189,34 @@ async def list_recent_logs(
     result = await db.execute(stmt)
     logs = result.scalars().all()
     return {"logs": [log.to_dict() for log in logs], "count": len(logs)}
+
+
+# ---------------------------------------------------------------------------
+# Vector RAG Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/rag/documents", tags=["Vector RAG Knowledge Base"])
+async def list_knowledge_documents():
+    """List all ingested executive documents and their chunk counts."""
+    docs = await rag_service.list_documents()
+    return {"documents": docs, "count": len(docs)}
+
+
+@router.post("/rag/upload", tags=["Vector RAG Knowledge Base"])
+async def upload_document(dto: IngestDocumentDTO):
+    """Ingest new document text, generate vector embeddings, and store in vector database."""
+    result = await rag_service.ingest_document(
+        title=dto.title,
+        content=dto.content,
+        filename=dto.filename,
+        category=dto.category
+    )
+    return result
+
+
+@router.post("/rag/search", tags=["Vector RAG Knowledge Base"])
+async def search_knowledge_base(dto: SemanticSearchDTO):
+    """Perform semantic cosine similarity vector search across knowledge chunks."""
+    results = await rag_service.search_semantic(query=dto.query, top_k=dto.top_k)
+    return {"query": dto.query, "results": results, "count": len(results)}
+

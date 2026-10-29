@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import uuid
 import logging
@@ -261,6 +262,19 @@ class ExecutiveVoiceAgent:
             })
             tools_executed.append({"tool": "save_smart_memory", "result": tool_res})
             reply = "I've committed that to memory for you, sir."
+
+        elif any(w in lower for w in ["policy", "handbook", "flight", "travel", "emergency", "crisis", "remote", "board", "guideline", "rules"]):
+            rag_res = await execute_tool("search_knowledge_base", {"query": text, "top_k": 2})
+            tools_executed.append({"tool": "search_knowledge_base", "result": rag_res})
+            results = rag_res.get("results", [])
+            if results:
+                snippet = results[0]["content"]
+                # Keep spoken response concise
+                clean_snippet = re.sub(r'#+ ', '', snippet).replace('\n', ' ')
+                reply = f"According to executive policy: {clean_snippet[:200]}."
+            else:
+                reply = "I searched the executive knowledge base, but found no matching records."
+
 
         elif "what" in lower or "list" in lower or "events" in lower or "tasks" in lower:
             tasks_res = await execute_tool("list_tasks", {"limit": 3})

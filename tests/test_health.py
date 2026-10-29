@@ -6,8 +6,16 @@ client = TestClient(app)
 
 
 def test_root_endpoint():
-    """Verify that root endpoint returns 200 and expected metadata."""
+    """Verify that root endpoint serves the web dashboard index.html."""
     response = client.get("/")
+    assert response.status_code == 200
+    assert "ARIA" in response.text
+    assert "visualizer-canvas" in response.text
+
+
+def test_api_info_endpoint():
+    """Verify that /api/info returns JSON metadata."""
+    response = client.get("/api/info")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "online"

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARIA // Executive AI Voice Agent</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#080C14',
+                        darkcard: 'rgba(17, 24, 39, 0.75)',
+                        cardborder: 'rgba(255, 255, 255, 0.08)',
+                        accent: '#6366F1',
+                        accentglow: '#818CF8',
+                        cyanaccent: '#06B6D4'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="bg-darkbg text-slate-100 font-sans min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="border-b border-cardborder bg-darkcard backdrop-blur-xl sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-semibold tracking-wide text-white flex items-center gap-2">
+                    ARIA <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">EXECUTIVE AI</span>
+                </h1>
+                <p class="text-xs text-slate-400">Full-Stack Voice Agent & Executive Orchestrator</p>
+            </div>
+        </div>
+
+        <!-- Telemetry & Latency Metrics Strip -->
+        <div class="flex items-center gap-4 text-xs font-mono">
+            <div class="hidden sm:flex items-center gap-2 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-cardborder">
+                <span class="text-slate-400">LLM Latency:</span>
+                <span id="metric-llm" class="text-emerald-400 font-medium">-- ms</span>
+            </div>
+            <div class="hidden sm:flex items-center gap-2 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-cardborder">
+                <span class="text-slate-400">TTS Latency:</span>
+                <span id="metric-tts" class="text-cyan-400 font-medium">-- ms</span>
+            </div>
+            <div class="flex items-center gap-2 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-cardborder">
+                <span class="text-slate-400">Round-Trip:</span>
+                <span id="metric-total" class="text-indigo-400 font-medium">-- ms</span>
+            </div>
+            <div class="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-cardborder">
+                <div id="connection-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                <span id="connection-status" class="text-slate-300">Connected</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Grid -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 max-w-7xl mx-auto w-full">
+        
+        <!-- Left & Center: Interactive Voice Console (7 cols) -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- Voice Interaction Hero Card -->
+            <div class="bg-darkcard backdrop-blur-xl border border-cardborder rounded-2xl p-6 shadow-2xl relative overflow-hidden flex flex-col items-center justify-center text-center min-h-[380px]">
+                
+                <!-- Ambient Glow Background -->
+                <div id="orb-ambient" class="absolute w-72 h-72 rounded-full bg-indigo-600/15 blur-3xl transition-all duration-700 pointer-events-none"></div>
+
+                <!-- Live Voice Wave Canvas -->
+                <canvas id="visualizer-canvas" class="w-full h-32 mb-4 z-10" width="600" height="120"></canvas>
+
+                <!-- Status Badge -->
+                <div class="z-10 mb-6">
+                    <span id="agent-state-badge" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium tracking-wide uppercase bg-indigo-950/80 text-indigo-300 border border-indigo-500/30 shadow-inner">
+                        <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+                        <span id="agent-state-text">Ready & Listening</span>
+                    </span>
+                </div>
+
+                <!-- Big Interactive Microphone Orb -->
+                <div class="relative z-10 flex flex-col items-center">
+                    <button id="mic-toggle-btn" class="group relative flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-600 to-cyan-500 text-white shadow-xl shadow-indigo-500/25 transition-all duration-300 hover:scale-105 active:scale-95 focus:outline-none">
+                        <!-- Ripple ring -->
+                        <span id="mic-pulse-ring" class="absolute inset-0 rounded-full bg-indigo-500/30 scale-100 group-hover:scale-110 transition-transform duration-500"></span>
+                        <i id="mic-icon" data-lucide="mic" class="w-10 h-10 transition-transform group-hover:scale-110"></i>
+                    </button>
+                    <p id="mic-hint" class="text-xs text-slate-400 mt-3 font-medium">Click to Speak or Type below</p>
+                </div>
+
+                <!-- Direct Text Input Bar -->
+                <form id="text-input-form" class="w-full mt-6 flex items-center gap-2 z-10">
+                    <div class="relative flex-1">
+                        <input id="user-text-input" type="text" placeholder="Or type a command (e.g. 'Schedule a meeting with Alex tomorrow at 10 AM')..." 
+                            class="w-full bg-slate-900/90 border border-cardborder focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 transition-all outline-none">
+                    </div>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-xl text-sm font-medium transition-colors flex items-center gap-1.5 shadow-md shadow-indigo-600/20">
+                        <span>Send</span>
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                    </button>
+                </form>
+
+            </div>
+
+            <!-- Live Dialogue Transcript & Tool Action Feed -->
+            <div class="bg-darkcard backdrop-blur-xl border border-cardborder rounded-2xl p-5 flex flex-col flex-1 shadow-lg min-h-[280px]">
+                <div class="flex items-center justify-between pb-3 border-b border-cardborder mb-3">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="message-square" class="w-4 h-4 text-indigo-400"></i>
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Live Voice Dialogue & Tool Logs</h2>
+                    </div>
+                    <button id="clear-transcript-btn" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">Clear</button>
+                </div>
+                <div id="transcript-feed" class="flex-1 overflow-y-auto space-y-3.5 pr-2 max-h-[320px] text-sm">
+                    <div class="flex items-start gap-3 bg-slate-900/40 p-3 rounded-xl border border-cardborder/50">
+                        <div class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
+                            <i data-lucide="bot" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-medium text-xs text-indigo-400">Aria</span>
+                                <span class="text-[10px] text-slate-500">System</span>
+                            </div>
+                            <p class="text-slate-300 text-xs mt-1">Good day. I am Aria, your executive assistant. Try saying "Schedule a meeting tomorrow at 3 PM" or "Add a task to review Q4 financials".</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Side: Live Panels (Tasks, Calendar, Memories) (5 cols) -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+
+            <!-- Calendar & Upcoming Schedule Card -->
+            <div class="bg-darkcard backdrop-blur-xl border border-cardborder rounded-2xl p-5 shadow-lg flex flex-col">
+                <div class="flex items-center justify-between pb-3 border-b border-cardborder mb-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="calendar" class="w-4 h-4 text-cyan-400"></i>
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Executive Calendar</h2>
+                    </div>
+                    <span id="calendar-count" class="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">0 Events</span>
+                </div>
+                <div id="calendar-list" class="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
+                    <div class="text-center py-6 text-xs text-slate-500">No scheduled events found. Speak to schedule one.</div>
+                </div>
+            </div>
+
+            <!-- Action Items & Tasks Card -->
+            <div class="bg-darkcard backdrop-blur-xl border border-cardborder rounded-2xl p-5 shadow-lg flex flex-col">
+                <div class="flex items-center justify-between pb-3 border-b border-cardborder mb-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="check-square" class="w-4 h-4 text-emerald-400"></i>
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Action Items & Tasks</h2>
+                    </div>
+                    <span id="tasks-count" class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">0 Tasks</span>
+                </div>
+                <div id="tasks-list" class="space-y-2.5 max-h-[240px] overflow-y-auto pr-1">
+                    <div class="text-center py-6 text-xs text-slate-500">No tasks on agenda.</div>
+                </div>
+            </div>
+
+            <!-- Smart Memory & Preferences Card -->
+            <div class="bg-darkcard backdrop-blur-xl border border-cardborder rounded-2xl p-5 shadow-lg flex flex-col">
+                <div class="flex items-center justify-between pb-3 border-b border-cardborder mb-3">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="brain" class="w-4 h-4 text-purple-400"></i>
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Smart Memory</h2>
+                    </div>
+                    <span id="memories-count" class="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono">0 Notes</span>
+                </div>
+                <div id="memories-list" class="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                    <div class="text-center py-4 text-xs text-slate-500">No saved preferences yet.</div>
+                </div>
+            </div>
+
+            <!-- Vector RAG Knowledge Base Card -->
+            <div class="bg-darkcard backdrop-blur-xl border border-cardborder rounded-2xl p-5 shadow-lg flex flex-col">
+                <div class="flex items-center justify-between pb-3 border-b border-cardborder mb-3">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="database" class="w-4 h-4 text-amber-400"></i>
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Vector RAG Knowledge Base</h2>
+                    </div>
+                    <span id="rag-docs-count" class="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">0 Docs</span>
+                </div>
+                <div id="rag-docs-list" class="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                    <div class="text-center py-4 text-xs text-slate-500">No ingested documents.</div>
+                </div>
+            </div>
+
+
+        </section>
+
+    </main>
+
+    <!-- Scripts -->
+    <script src="/static/js/audio_agent.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
-import logging
-from typing import Dict, Any, Optional, List
 from app.db.session import async_session_factory
 from app.db import repository
+from typing import Dict, Any, Optional, List
+import logging
 
 logger = logging.getLogger("voice_agent.tools")
 
@@ -163,6 +163,22 @@ async def tool_recall_smart_memory(
         }
 
 
+async def tool_search_knowledge_base(
+    query: str,
+    top_k: int = 2
+) -> Dict[str, Any]:
+    """Perform semantic vector RAG search across executive handbooks, company policies, and documents."""
+    from app.services.rag_service import rag_service
+    results = await rag_service.search_semantic(query=query, top_k=top_k)
+    return {
+        "success": True,
+        "count": len(results),
+        "query": query,
+        "results": results
+    }
+
+
+
 # ---------------------------------------------------------------------------
 # Tool Dispatcher Registry
 # ---------------------------------------------------------------------------
@@ -176,6 +192,7 @@ AVAILABLE_TOOLS = {
     "cancel_calendar_event": tool_cancel_calendar_event,
     "save_smart_memory": tool_save_smart_memory,
     "recall_smart_memory": tool_recall_smart_memory,
+    "search_knowledge_base": tool_search_knowledge_base,
 }
 
 
@@ -304,6 +321,18 @@ GEMINI_FUNCTION_DECLARATIONS = [
                 "query": {"type": "STRING", "description": "Search term or keyword to find relevant memories."},
                 "category": {"type": "STRING", "description": "Category to filter by."}
             }
+        }
+    },
+    {
+        "name": "search_knowledge_base",
+        "description": "Perform semantic vector RAG search across executive handbooks, corporate policies, and uploaded company documents.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "query": {"type": "STRING", "description": "Topic, question, or keyword to retrieve from company knowledge base."},
+                "top_k": {"type": "INTEGER", "description": "Number of snippets to retrieve (default 2)."}
+            },
+            "required": ["query"]
         }
     }
 ]

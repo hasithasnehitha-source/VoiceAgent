@@ -124,3 +124,48 @@ class ConversationLog(Base):
             "latency_ms": self.latency_ms,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class KnowledgeDocument(Base):
+    """KnowledgeDocument model representing uploaded executive documents/handbooks for RAG."""
+    __tablename__ = "knowledge_documents"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    filename: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    category: Mapped[str] = mapped_column(String(50), default="policy")
+    chunk_count: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "filename": self.filename,
+            "category": self.category,
+            "chunk_count": self.chunk_count,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class DocumentChunk(Base):
+    """DocumentChunk storing text segment and serialized vector embedding for semantic search."""
+    __tablename__ = "document_chunks"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    document_id: Mapped[int] = mapped_column(index=True)
+    chunk_index: Mapped[int] = mapped_column(default=0)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding_json: Mapped[str] = mapped_column(Text, nullable=False)  # JSON serialized float array
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "document_id": self.document_id,
+            "chunk_index": self.chunk_index,
+            "content": self.content,
+        }
+

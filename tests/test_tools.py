@@ -10,7 +10,7 @@ from app.services.agent_tools import (
 @pytest.mark.asyncio
 async def test_tool_declarations_and_registry():
     """Verify that all tools in GEMINI_FUNCTION_DECLARATIONS have matching handlers."""
-    assert len(GEMINI_FUNCTION_DECLARATIONS) == 8
+    assert len(GEMINI_FUNCTION_DECLARATIONS) == 9
     for decl in GEMINI_FUNCTION_DECLARATIONS:
         name = decl["name"]
         assert name in AVAILABLE_TOOLS, f"Declaration {name} missing handler"

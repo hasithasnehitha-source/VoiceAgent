@@ -3,8 +3,10 @@ from datetime import datetime, timezone
 import logging
 from fastapi import FastAPI, Depends, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
+import os
 
 from app.core.config import settings
 from app.db.session import init_db, get_db, engine
@@ -35,6 +37,8 @@ async def lifespan(app: FastAPI):
     """Application startup and shutdown lifecycle management."""
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION} [{settings.ENVIRONMENT}]")
     await init_db()
+    from app.services.rag_service import seed_initial_knowledge_base
+    await seed_initial_knowledge_base()
     yield
     logger.info(f"Shutting down {settings.APP_NAME}")
     await engine.dispose()
@@ -60,11 +64,31 @@ app.add_middleware(
 app.include_router(rest_router)
 app.include_router(ws_router)
 
+# Mount Static Files directory for frontend assets
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
-@app.get("/", tags=["Root"])
+@app.get("/", tags=["Executive Dashboard"])
 async def root():
-    """Root endpoint welcoming users and providing basic API metadata."""
+    """Serve the Executive Voice Agent Web Dashboard."""
+    index_path = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return JSONResponse(
+        content={
+            "message": f"Welcome to {settings.APP_NAME}",
+            "version": settings.APP_VERSION,
+            "status": "online",
+            "docs_url": "/docs"
+        }
+    )
+
+
+@app.get("/api/info", tags=["Root"])
+async def api_info():
+    """API metadata and navigation links."""
     return JSONResponse(
         content={
             "message": f"Welcome to {settings.APP_NAME}",

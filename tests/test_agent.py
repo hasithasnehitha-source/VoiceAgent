@@ -42,7 +42,7 @@ def test_agent_status_endpoint():
     data = response.json()
     assert data["agent_name"] == "Aria"
     assert "mode" in data
-    assert data["tools_count"] == 8
+    assert data["tools_count"] == 9
 
 
 def test_agent_chat_endpoint():
