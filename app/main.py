@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import logging
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -14,6 +14,7 @@ from app.services.agent_tools import (
     GEMINI_FUNCTION_DECLARATIONS,
     execute_tool
 )
+from app.services.tts_service import tts_service
 from pydantic import BaseModel, Field
 from typing import Dict, Any
 
@@ -120,5 +121,40 @@ async def run_tool(request: ToolExecutionRequest):
     """Execute an agent tool with arguments and return the result."""
     result = await execute_tool(request.tool_name, request.args)
     return JSONResponse(content=result)
+
+
+@app.get("/api/tts/voices", tags=["Speech (TTS)"])
+async def list_voices():
+    """List curated high-fidelity neural voices available for the voice agent."""
+    return JSONResponse(
+        content={
+            "default_voice": settings.DEFAULT_VOICE,
+            "voices": tts_service.get_curated_voices()
+        }
+    )
+
+
+@app.get("/api/tts/speak", tags=["Speech (TTS)"])
+async def synthesize_speech(
+    text: str = Query(..., description="Text to synthesize into neural speech"),
+    voice: str = Query(None, description="Neural voice name (e.g. en-US-AriaNeural, en-US-GuyNeural)")
+):
+    """Synthesize text into MP3 audio and stream directly to the browser or audio player."""
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="Text parameter cannot be empty.")
+
+    audio_bytes = await tts_service.synthesize_to_bytes(text=text, voice=voice)
+    if not audio_bytes:
+        raise HTTPException(status_code=500, detail="Failed to synthesize speech audio.")
+
+    return Response(
+        content=audio_bytes,
+        media_type="audio/mpeg",
+        headers={
+            "Content-Disposition": "inline; filename=speech.mp3",
+            "Cache-Control": "no-cache"
+        }
+    )
+
 
 
