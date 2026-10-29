@@ -1,0 +1,33 @@
+# Virtual environment
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables (contains sensitive API keys)
+.env
+
+# Python cache & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# SQLite local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Pytest & test caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
